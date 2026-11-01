@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1020" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>API 余额</title>
+<style>
+  :root[data-theme="dark"]{
+    --bg:#0b1020; --card:rgba(255,255,255,.06); --card2:rgba(255,255,255,.09);
+    --line:rgba(255,255,255,.1); --text:#e8ecf7; --muted:#8b96b3;
+    --good:#34d399; --bad:#f87171; --warn:#fbbf24; --accent:#5b8cff;
+  }
+  :root[data-theme="light"]{
+    --bg:#f2f5fb; --card:#ffffff; --card2:#eef2f9;
+    --line:rgba(0,0,0,.08); --text:#16213a; --muted:#6b7794;
+    --good:#059669; --bad:#dc2626; --warn:#d97706; --accent:#2563eb;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{background:var(--bg);min-height:100vh;color:var(--text);font-size:16px;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:max(14px,env(safe-area-inset-top)) 14px calc(80px + env(safe-area-inset-bottom));}
+  header{display:flex;align-items:center;justify-content:space-between;margin:0 2px 12px;gap:8px}
+  h1{font-size:19px;margin:0}
+  .sub{color:var(--muted);font-size:12px;margin-top:3px}
+  button{font:inherit;border:0;border-radius:12px;padding:9px 13px;cursor:pointer;
+    background:var(--card2);color:var(--text);font-size:14px}
+  button:active{transform:scale(.97)}
+  button:disabled{opacity:.45}
+  button.p{background:linear-gradient(135deg,#5b8cff,#7c3aed);color:#fff;font-weight:600}
+  .cards{display:grid;gap:11px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 15px;position:relative}
+  .row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:600;font-size:15px;white-space:nowrap}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .amount{font-size:26px;font-weight:700;letter-spacing:-.5px;white-space:nowrap;text-align:right}
+  .amount small{font-size:13px;opacity:.7;margin-left:3px}
+  .amount.low{color:var(--bad)}
+  .label{color:var(--muted);font-size:11px;margin-top:2px;text-align:right}
+  .err{color:var(--bad);font-size:13.5px;text-align:right}
+  .details{margin-top:10px;border-top:1px dashed var(--line);padding-top:9px;display:grid;gap:5px}
+  .detail{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted)}
+  .detail b{color:var(--text);font-weight:500}
+  .footer{text-align:center;color:var(--muted);font-size:11px;margin-top:16px;line-height:1.7}
+  .stale{opacity:.6}
+
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:50}
+  .sheet.open{display:flex}
+  .panel{width:100%;background:var(--bg);border-radius:22px 22px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom));
+    max-height:88vh;overflow:auto;border-top:1px solid var(--line)}
+  .panel h2{font-size:16px;margin:0 0 4px}
+  .hint{color:var(--muted);font-size:12px;margin:0 0 14px;line-height:1.5}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px}
+  .field input,.field select{width:100%;padding:12px 13px;border-radius:12px;border:1px solid var(--line);
+    background:var(--card);color:var(--text);font-size:16px;outline:none}
+  .field input:focus{border-color:var(--accent)}
+  .pa{display:flex;gap:8px;margin-top:16px}
+  .pa button{flex:1}
+
+  .tabbar{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--bg);
+    border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:40}
+  .tabbar button{flex:1;border-radius:0;background:none;padding:10px 2px 11px;font-size:11px;
+    color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+  .tabbar button .ic{font-size:19px;line-height:1}
+  .tabbar button.on{color:var(--accent)}
+  .view{display:none}.view.on{display:block}
+
+  .statgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:13px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 10px;text-align:center}
+  .stat b{display:block;font-size:20px;font-weight:700}
+  .stat span{font-size:11px;color:var(--muted)}
+  .sect{font-size:14px;font-weight:600;margin:16px 2px 9px;color:var(--text)}
+  .cardbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:11px}
+  .empty{text-align:center;color:var(--muted);font-size:14px;padding:40px 0;line-height:1.9}
+  .chart{width:100%;height:150px;display:block}
+  .legend{display:flex;gap:14px;font-size:11px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
+  .settings label{display:flex;justify-content:space-between;align-items:center;background:var(--card);
+    border:1px solid var(--line);border-radius:11px;padding:12px 13px;margin-bottom:8px;font-size:14.5px;gap:10px}
+  .settings select,.settings input[type=number]{font:inherit;font-size:14px;background:var(--card2);color:var(--text);
+    border:1px solid var(--line);border-radius:9px;padding:7px 9px;max-width:130px}
+  .logitem{display:flex;justify-content:space-between;padding:10px 2px;border-bottom:1px solid var(--line);font-size:14px}
+  .logitem:last-child{border-bottom:0}
+  .logitem .l{color:var(--muted);font-size:12px}
+  .hintline{font-size:12px;color:var(--muted);line-height:1.7;margin:10px 2px}
+  .warnbadge{background:rgba(239,68,68,.15);color:var(--bad);font-size:11px;padding:2px 7px;border-radius:6px;margin-left:6px}
+  .toggle{width:46px;height:26px;border-radius:13px;background:var(--card2);position:relative;transition:.2s;flex:none}
+  .toggle.on{background:var(--accent)}
+  .toggle::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}
+  .toggle.on::after{left:23px}
+</style>
+</head>
+<body>
+
+<!-- 余额 -->
+<div class="view on" id="v-balance">
+  <header>
+    <div>
+      <h1>API 余额</h1>
+      <div class="sub" id="status">尚未刷新</div>
+    </div>
+    <button id="refresh" class="p">刷新</button>
+  </header>
+  <div class="cards" id="cards"></div>
+  <div class="footer" id="foot">保存在本机浏览器 · 数据不会上传到任何地方</div>
+</div>
+
+<!-- 趋势 -->
+<div class="view" id="v-trend">
+  <header><h1>余额趋势</h1><button id="btn-trend-clear">清空历史</button></header>
+  <div class="sect">总余额变化（近 30 天）</div>
+  <div class="cardbox"><canvas class="chart" id="chart"></canvas>
+    <div class="legend"><span><i style="background:#5b8cff"></i>总余额</span></div></div>
+  <div class="sect">每日消耗估算</div>
+  <div class="statgrid" id="spend-stats"></div>
+  <div class="sect">各平台余额</div>
+  <div id="trend-list"></div>
+</div>
+
+<!-- 记账 -->
+<div class="view" id="v-log">
+  <header><h1>充值记录</h1><button id="btn-addlog" class="p">+ 记账</button></header>
+  <div class="statgrid" id="log-stats"></div>
+  <div class="cardbox" id="log-list"></div>
+</div>
+
+<!-- 设置 -->
+<div class="view" id="v-more">
+  <header><h1>设置</h1></header>
+
+  <div class="sect">刷新</div>
+  <div class="settings">
+    <label>自动刷新
+      <button id="toggle-auto" class="toggle"></button>
+    </label>
+    <label>刷新间隔
+      <select id="sel-interval">
+        <option value="1">1 分钟</option>
+        <option value="5" selected>5 分钟</option>
+        <option value="15">15 分钟</option>
+        <option value="30">30 分钟</option>
+        <option value="60">1 小时</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="sect">提醒与显示</div>
+  <div class="settings">
+    <label>低余额提醒
+      <input type="number" id="inp-threshold" value="10" min="0" step="1" />
+    </label>
+    <label>主题
+      <select id="sel-theme">
+        <option value="auto">跟随系统</option>
+        <option value="dark">深色</option>
+        <option value="light">浅色</option>
+      </select>
+    </label>
+  </div>
+  <div class="hintline">余额低于设定值时会标红提醒。金额按各平台原币种显示。</div>
+
+  <div class="sect">API 密钥</div>
+  <button id="btn-keys" style="width:100%;padding:13px">管理密钥</button>
+
+  <div class="sect">关于</div>
+  <div class="hintline">密钥只保存在这个手机的浏览器里，查询时由浏览器直接请求各平台官方接口，不经过任何中间服务器。离线时会显示上次缓存的数据。</div>
+</div>
+
+<nav class="tabbar">
+  <button data-view="v-balance" class="on"><span class="ic">💰</span>余额</button>
+  <button data-view="v-trend"><span class="ic">📈</span>趋势</button>
+  <button data-view="v-log"><span class="ic">📝</span>记账</button>
+  <button data-view="v-more"><span class="ic">⚙️</span>设置</button>
+</nav>
+
+<!-- 密钥面板 -->
+<div class="sheet" id="sheet">
+  <div class="panel">
+    <h2>API 密钥</h2>
+    <p class="hint">密钥只存在这台手机上，直接请求各平台官方接口。留空表示不查询该平台。</p>
+    <div id="fields"></div>
+    <div class="pa">
+      <button id="clear">清空</button>
+      <button id="save" class="p">保存并刷新</button>
+    </div>
+  </div>
+</div>
+
+<!-- 记账面板 -->
+<div class="sheet" id="logsheet">
+  <div class="panel">
+    <h2>记一笔</h2>
+    <p class="hint">记下充值或消费，方便对照余额变化。</p>
+    <div class="field"><label>平台</label>
+      <select id="log-provider"></select></div>
+    <div class="field"><label>金额</label>
+      <input type="number" id="log-amount" step="0.01" placeholder="如 100" /></div>
+    <div class="field"><label>类型</label>
+      <select id="log-type"><option value="recharge">充值</option><option value="spend">消费</option></select></div>
+    <div class="field"><label>备注（可选）</label>
+      <input id="log-note" placeholder="如：活动赠送" /></div>
+    <div class="pa">
+      <button id="log-cancel">取消</button>
+      <button id="log-save" class="p">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var SK='api_keys_v4', CK='api_cache_v4', HK='api_history_v4', LGK='api_ledger_v4', CFGK='api_cfg_v4';
+
+  var PROVIDERS = [
+    { id:'deepseek',    name:'DeepSeek',       color:'#4d6bfe', query:deepseek },
+    { id:'moonshot',    name:'月之暗面 Kimi',  color:'#a3a3a3', query:moonshot },
+    { id:'siliconflow', name:'硅基流动',       color:'#7c3aed', query:siliconflow },
+    { id:'openrouter',  name:'OpenRouter',     color:'#0ea5e9', query:openrouter },
+    { id:'zhipu',       name:'智谱 GLM',       color:'#10b981', query:zhipu }
+  ];
+
+  var $ = function(id){ return document.getElementById(id); };
+  function loadJ(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)); return v===null?d:v; }catch(e){ return d; } }
+  function saveJ(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function redact(k){ if(!k) return ''; return k.length>12? k.slice(0,6)+'…'+k.slice(-4) : k.slice(0,2)+'***'; }
+  function num(v){ var n=Number(v); return isFinite(n)?n:NaN; }
+  function dateKey(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+  function todayKey(){ return dateKey(new Date()); }
+
+  var keys = loadJ(SK,{});
+  var cfg  = loadJ(CFGK,{ auto:false, interval:5, threshold:10, theme:'auto' });
+  var cache= loadJ(CK,null);
+  var history = loadJ(HK,[]);    // [{at, iso, total, byId:{id:amount}}]
+  var ledger = loadJ(LGK,[]);    // [{id, at, provider, amount, type, note}]
+
+  /* ---------------- 主题 ---------------- */
+  function applyTheme(){
+    var t = cfg.theme;
+    if (t === 'auto') t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+  }
+  applyTheme();
+
+  /* ---------------- 网络请求 ---------------- */
+  function getJSON(url, key, useRawKey){
+    var ctl = new AbortController();
+    var timer = setTimeout(function(){ ctl.abort(); }, 20000);
+    var headers = { Accept:'application/json' };
+    if (key) headers.Authorization = useRawKey ? key : ('Bearer ' + key);
+    return fetch(url, { headers:headers, signal:ctl.signal, cache:'no-store' }).then(function(res){
+      clearTimeout(timer);
+      return res.text().then(function(t){
+        var d=null; try{ d=JSON.parse(t); }catch(e){}
+        return { status:res.status, data:d };
+      });
+    }, function(e){ clearTimeout(timer); throw e; });
+  }
+
+  /* ---------------- 各平台适配 ---------------- */
+  function deepseek(key){
+    return getJSON('https://api.deepseek.com/user/balance', key).then(function(r){
+      if(r.status===401||r.status===403) return {ok:false,message:'API Key 无效'};
+      if(r.status!==200||!r.data) return {ok:false,message:'接口返回 '+r.status};
+      var infos=r.data.balance_infos||[], main=null;
+      for(var i=0;i<infos.length;i++){ if(infos[i].currency==='CNY'){ main=infos[i]; break; } }
+      if(!main) main=infos[0];
+      if(!main) return {ok:false,message:'未返回余额'};
+      return { ok:true,
+        primary:{ amount:num(main.total_balance), currency:main.currency, label:'总余额' },
+        details:[
+          {label:'充值余额', value:main.topped_up_balance+' '+main.currency},
+          {label:'赠送余额', value:main.granted_balance+' '+main.currency},
+          {label:'可用状态', value:r.data.is_available?'正常':'余额不足'}
+        ]};
+    });
+  }
+
+  function moonshot(key){
+    var hosts=['https://api.moonshot.cn','https://api.moonshot.ai'];
+    function tryAt(n){
+      if(n>=hosts.length) return Promise.resolve({ok:false,message:'查询失败'});
+      return getJSON(hosts[n]+'/v1/users/me/balance', key).then(function(r){
+        if(r.status===401||r.status===403) return {ok:false,message:'API Key 无效'};
+        if(r.status!==200||!r.data) return tryAt(n+1);
+        if(r.data.status===false||(r.data.code!==undefined&&r.data.code!==0)){
+          return {ok:false,message:(r.data.error&&r.data.error.message)||r.data.msg||'查询失败'};
+        }
+        var d=r.data.data||{};
+        return { ok:true,
+          primary:{ amount:num(d.available_balance), currency:'USD', label:'可用余额' },
+          details:[
+            {label:'现金余额', value:d.cash_balance+' USD'},
+            {label:'代金券', value:d.voucher_balance+' USD'},
+            {label:'接口域名', value:hosts[n].replace('https://','')}
+          ]};
+      }, function(){ return tryAt(n+1); });
+    }
+    return tryAt(0);
+  }
+
+  function siliconflow(key){
+    return getJSON('https://api.siliconflow.cn/v1/user/info', key).then(function(r){
+      if(r.status===401||r.status===403) return {ok:false,message:'API Key 无效'};
+      if(r.status!==200||!r.data) return {ok:false,message:'接口返回 '+r.status};
+      var d=r.data.data||{};
+      if(d.totalBalance===undefined&&d.chargeBalance===undefined) return {ok:false,message:r.data.message||'未返回余额'};
+      return { ok:true,
+        primary:{ amount:num(d.totalBalance), currency:'CNY', label:'总余额' },
+        details:[
+          {label:'充值余额', value:d.chargeBalance+' CNY'},
+          {label:'赠送余额', value:d.balance+' CNY'},
+          {label:'账户状态', value:d.status==='normal'?'正常':String(d.status||'—')}
+        ]};
+    });
+  }
+
+  function openrouter(key){
+    return getJSON('https://openrouter.ai/api/v1/credits', key).then(function(r){
+      if(r.status===401||r.status===403) return {ok:false,message:'API Key 无效'};
+      if(r.status!==200||!r.data) return {ok:false,message:'接口返回 '+r.status};
+      var d=r.data.data||r.data;
+      var total=num(d.total_credits), used=num(d.total_usage);
+      if(!isFinite(total)) return {ok:false,message:'未返回额度'};
+      if(!isFinite(used)) used=0;
+      return { ok:true,
+        primary:{ amount:total-used, currency:'USD', label:'剩余额度' },
+        details:[
+          {label:'已用', value:'$'+used.toFixed(4)},
+          {label:'累计充值', value:'$'+total.toFixed(4)}
+        ]};
+    });
+  }
+
+  function zhipu(key){
+    return getJSON('https://open.bigmodel.cn/api/biz/account/query-customer-account-report', key).then(function(r){
+      if(!r.data) return {ok:false,message:'接口返回 '+r.status};
+      if(r.data.code===401||r.status===401||r.status===403) return {ok:false,message:'API Key 无效'};
+      if(r.data.success===false) return {ok:false,message:r.data.msg||'查询失败'};
+      var d=r.data.data||{};
+      var bal = d.availableBalance!==undefined ? d.availableBalance : d.balance;
+      if(bal===undefined) return {ok:false,message:'未返回余额'};
+      var details=[
+        {label:'现金余额', value:bal+' CNY'},
+        {label:'充值金额', value:(d.rechargeAmount!==undefined?d.rechargeAmount:'—')+' CNY'},
+        {label:'赠送金额', value:(d.giveAmount!==undefined?d.giveAmount:'—')+' CNY'}
+      ];
+      if(d.frozenBalance!==undefined) details.push({label:'冻结金额', value:d.frozenBalance+' CNY'});
+      return { ok:true,
+        primary:{ amount:num(bal), currency:'CNY', label:'可用余额' },
+        details:details };
+    });
+  }
+
+  /* ---------------- 查询与渲染 ---------------- */
+  var busy=false;
+  function checkAll(onDone){
+    if(busy) return;
+    var todo = PROVIDERS.filter(function(p){ return (keys[p.id]||'').trim(); });
+    if(!todo.length){ renderBalance([]); openSheet(); return; }
+    busy=true; $('refresh').disabled=true;
+    if(cache) renderBalance(cache.results, cache.at, true);
+    $('status').textContent='刷新中…';
+
+    var out=[], pending=todo.length;
+    todo.forEach(function(p){
+      var key=keys[p.id].trim(), t0=Date.now();
+      p.query(key).then(function(res){
+        res.id=p.id; res.keyHint=redact(key); res.elapsed=Date.now()-t0;
+        out.push(res);
+      }, function(e){
+        out.push({id:p.id, ok:false, keyHint:redact(key), elapsed:Date.now()-t0,
+          message:e&&e.name==='AbortError'?'请求超时':'网络错误'});
+      }).then(function(){
+        pending--;
+        if(pending===0){
+          var order={}; PROVIDERS.forEach(function(p,i){ order[p.id]=i; });
+          out.sort(function(a,b){ return order[a.id]-order[b.id]; });
+          var payload={ at:new Date().toISOString(), results:out };
+          saveJ(CK, payload); cache=payload;
+          recordHistory(out);
+          renderBalance(out, payload.at, false);
+          busy=false; $('refresh').disabled=false;
+          if(onDone) onDone();
+        }
+      });
+    });
+  }
+
+  function recordHistory(results){
+    var byId={}, total=0;
+    results.forEach(function(r){
+      if(r.ok && r.primary && isFinite(r.primary.amount)){
+        byId[r.id]=r.primary.amount;
+        total += r.primary.amount;
+      }
+    });
+    if(!Object.keys(byId).length) return;
+    history.push({ at:Date.now(), iso:new Date().toISOString(), total:total, byId:byId });
+    if(history.length>500) history=history.slice(-500);
+    saveJ(HK, history);
+  }
+
+  function fmtMoney(n,cur){
+    if(!isFinite(n)) return '—';
+    var a=Math.abs(n), s;
+    if(a>=1000) s=n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+    else if(a>=1) s=n.toFixed(2);
+    else s=n.toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
+    var sym = cur==='USD'?'$':cur==='CNY'?'¥':(cur||'');
+    return esc(s)+'<small>'+esc(sym)+'</small>';
+  }
+
+  function renderBalance(results, at, loading){
+    var map={}; (results||[]).forEach(function(r){ map[r.id]=r; });
+    var html='';
+    PROVIDERS.forEach(function(p){
+      var r=map[p.id], right, details='';
+      if(!r){
+        right='<div class="err">未配置</div><div class="label">点「设置 → 管理密钥」</div>';
+      } else if(r.ok){
+        var low = isFinite(r.primary.amount) && r.primary.amount < cfg.threshold;
+        right='<div class="amount'+(low?' low':'')+'">'+fmtMoney(r.primary.amount,r.primary.currency)+'</div>'+
+          '<div class="label">'+esc(r.primary.label||'余额')+(low?'<span class="warnbadge">偏低</span>':'')+'</div>';
+        if(r.details&&r.details.length){
+          details='<div class="details">'+r.details.map(function(d){
+            return '<div class="detail"><span>'+esc(d.label)+'</span><b>'+esc(d.value)+'</b></div>';
+          }).join('')+'</div>';
+        }
+      } else {
+        right='<div class="err">'+esc(r.message||'查询失败')+'</div><div class="label">'+esc(r.keyHint||'')+'</div>';
+      }
+      html+='<section class="card'+(loading?' stale':'')+'">'+
+        '<div class="row"><div class="brand"><span class="dot" style="background:'+p.color+'"></span>'+esc(p.name)+
+        '</div><div>'+right+'</div></div>'+details+'</section>';
+    });
+    $('cards').innerHTML=html;
+    if(at){
+      var t=new Date(at);
+      $('status').textContent=(loading?'刷新中… ':'')+'更新于 '+
+        ('0'+t.getHours()).slice(-2)+':'+('0'+t.getMinutes()).slice(-2)+(loading?'（缓存）':'');
+    }
+  }
+
+  /* ---------------- 趋势 ---------------- */
+  function renderTrend(){
+    var pts = history.slice(-120);
+    // 按天聚合，取每天最后一次
+    var byDay={};
+    pts.forEach(function(h){ byDay[dateKey(new Date(h.at))]=h; });
+    var days=Object.keys(byDay).sort();
+    var el=$('chart');
+    var dpr=window.devicePixelRatio||1;
+    var W=el.clientWidth||360, H=150;
+    el.width=W*dpr; el.height=H*dpr;
+    el.style.height=H+'px';
+    var ctx=el.getContext('2d');
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,W,H);
+    if(days.length<2){
+      ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--muted')||'#888';
+      ctx.font='13px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('数据不足，多刷新几天就能看到趋势', W/2, H/2);
+    } else {
+      var vals=days.map(function(d){ return byDay[d].total; });
+      var max=Math.max.apply(null,vals), min=Math.min.apply(null,vals);
+      if(max===min){ max=min+1; }
+      var pad=26, cw=W-pad-10, ch=H-30;
+      function X(i){ return pad + (i/(days.length-1))*cw; }
+      function Y(v){ return 10 + ch - ((v-min)/(max-min))*ch; }
+      // 网格
+      ctx.strokeStyle='rgba(128,140,170,.18)'; ctx.lineWidth=1;
+      for(var g=0;g<=3;g++){
+        var yy=10+ch*(g/3);
+        ctx.beginPath(); ctx.moveTo(pad,yy); ctx.lineTo(W-10,yy); ctx.stroke();
+      }
+      // 折线
+      ctx.beginPath();
+      days.forEach(function(d,i){ var x=X(i), y=Y(byDay[d].total); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+      ctx.strokeStyle='#5b8cff'; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.stroke();
+      // 填充
+      ctx.lineTo(X(days.length-1),10+ch); ctx.lineTo(X(0),10+ch); ctx.closePath();
+      ctx.fillStyle='rgba(91,140,255,.15)'; ctx.fill();
+      // 点
+      days.forEach(function(d,i){
+        if(days.length<=14 || i===0 || i===days.length-1){
+          ctx.beginPath(); ctx.arc(X(i),Y(byDay[d].total),2.5,0,7); ctx.fillStyle='#5b8cff'; ctx.fill();
+        }
+      });
+      // 标签
+      ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--muted')||'#888';
+      ctx.font='10px sans-serif';
+      ctx.textAlign='left'; ctx.fillText(max.toFixed(2),2,14);
+      ctx.fillText(min.toFixed(2),2,10+ch+4);
+      ctx.textAlign='center';
+      ctx.fillText(days[0].slice(5),pad,H-8);
+      ctx.fillText(days[days.length-1].slice(5),W-14,H-8);
+    }
+
+    // 消耗估算
+    var spendHtml='';
+    if(history.length>=2){
+      var first=history[0], last=history[history.length-1];
+      var totalSpend = first.total - last.total;
+      var msDays = (last.at - first.at)/(24*3600*1000);
+      var perDay = msDays>0 ? totalSpend/msDays : 0;
+      spendHtml='<div class="stat"><b>'+fmtMoney(perDay,'')+'</b><span>平均每天消耗</span></div>'+
+        '<div class="stat"><b>'+fmtMoney(perDay*7,'')+'</b><span>预计每周消耗</span></div>'+
+        '<div class="stat"><b>'+fmtMoney(totalSpend,'')+'</b><span>累计变化</span></div>'+
+        '<div class="stat"><b>'+(msDays<1?'<1':Math.round(msDays))+'</b><span>统计天数</span></div>';
+      if(perDay<=0) spendHtml+='<div class="hintline" style="grid-column:1/-1">消耗为负说明期间有充值，或余额未变化。</div>';
+    } else {
+      spendHtml='<div class="hintline" style="grid-column:1/-1">至少刷新两次才能估算消耗。</div>';
+    }
+    $('spend-stats').innerHTML=spendHtml;
+
+    // 各平台最新
+    var latest = history.length ? history[history.length-1] : null;
+    if(latest){
+      var lh='';
+      PROVIDERS.forEach(function(p){
+        var v=latest.byId[p.id];
+        if(v===undefined) return;
+        lh+='<div class="logitem"><span><span class="dot" style="background:'+p.color+';display:inline-block;margin-right:7px"></span>'+esc(p.name)+
+        '</span><b>'+fmtMoney(v,'')+'</b></div>';
+      });
+      $('trend-list').innerHTML = lh ? '<div class="cardbox">'+lh+'</div>' : '<div class="empty">暂无数据</div>';
+    } else {
+      $('trend-list').innerHTML='<div class="empty">还没有历史数据<br>刷新几次后就会有了</div>';
+    }
+  }
+
+  /* ---------------- 记账 ---------------- */
+  function renderLog(){
+    var rec=0, spd=0;
+    ledger.forEach(function(x){ if(x.type==='recharge') rec+=x.amount; else spd+=x.amount; });
+    $('log-stats').innerHTML='<div class="stat"><b style="color:var(--good)">'+fmtMoney(rec,'')+'</b><span>累计充值</span></div>'+
+      '<div class="stat"><b style="color:var(--bad)">'+fmtMoney(spd,'')+'</b><span>累计消费</span></div>';
+    if(!ledger.length){ $('log-list').innerHTML='<div class="empty">还没有记录<br>点右上角「+ 记账」添加</div>'; return; }
+    var sorted=ledger.slice().sort(function(a,b){ return b.at-a.at; });
+    $('log-list').innerHTML=sorted.map(function(x){
+      var p=PROVIDERS.filter(function(q){ return q.id===x.provider; })[0];
+      var d=new Date(x.at);
+      return '<div class="logitem" data-id="'+x.id+'">'+
+        '<span>'+esc(p?p.name:x.provider)+' · '+(x.type==='recharge'?'充值':'消费')+
+        (x.note?'<span class="l"> · '+esc(x.note)+'</span>':'')+
+        '<span class="l" style="display:block">'+dateKey(d)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+'</span></span>'+
+        '<b style="color:'+(x.type==='recharge'?'var(--good)':'var(--bad)')+'">'+(x.type==='recharge'?'+':'-')+fmtMoney(x.amount,'')+'</b></div>';
+    }).join('');
+  }
+  function openLogSheet(){
+    $('log-provider').innerHTML = PROVIDERS.map(function(p){
+      return '<option value="'+p.id+'">'+esc(p.name)+'</option>';
+    }).join('');
+    $('log-amount').value=''; $('log-note').value=''; $('log-type').value='recharge';
+    $('logsheet').className='sheet open';
+  }
+
+  /* ---------------- 密钥面板 ---------------- */
+  function openSheet(){
+    $('fields').innerHTML = PROVIDERS.map(function(p){
+      return '<div class="field"><label>'+esc(p.name)+'</label>'+
+        '<input type="password" id="k-'+p.id+'" autocapitalize="off" autocorrect="off" spellcheck="false" '+
+        'autocomplete="off" placeholder="粘贴 API Key，留空不查询" value="'+esc(keys[p.id]||'')+'"></div>';
+    }).join('');
+    $('sheet').className='sheet open';
+  }
+  function closeSheet(){ $('sheet').className='sheet'; }
+
+  /* ---------------- 自动刷新 ---------------- */
+  var autoTimer=null;
+  function setupAuto(){
+    if(autoTimer){ clearInterval(autoTimer); autoTimer=null; }
+    if(cfg.auto){
+      autoTimer=setInterval(function(){ checkAll(); }, cfg.interval*60*1000);
+    }
+  }
+
+  /* ---------------- 设置渲染 ---------------- */
+  function renderSettings(){
+    $('toggle-auto').className='toggle'+(cfg.auto?' on':'');
+    $('sel-interval').value=String(cfg.interval);
+    $('inp-threshold').value=cfg.threshold;
+    $('sel-theme').value=cfg.theme;
+  }
+
+  /* ---------------- 视图 ---------------- */
+  function showView(id){
+    ['v-balance','v-trend','v-log','v-more'].forEach(function(v){
+      $(v).className='view'+(v===id?' on':'');
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.tabbar button'),function(b){
+      b.className = b.getAttribute('data-view')===id?'on':'';
+    });
+    if(id==='v-trend') renderTrend();
+    if(id==='v-log') renderLog();
+    if(id==='v-more') { renderSettings(); }
+    window.scrollTo({top:0});
+  }
+
+  /* ---------------- 事件 ---------------- */
+  Array.prototype.forEach.call(document.querySelectorAll('.tabbar button'),function(b){
+    b.onclick=function(){ showView(b.getAttribute('data-view')); };
+  });
+  $('refresh').onclick=function(){ checkAll(); };
+  $('btn-keys').onclick=openSheet;
+  $('sheet').onclick=function(e){ if(e.target===$('sheet')) closeSheet(); };
+  $('save').onclick=function(){
+    var k={};
+    PROVIDERS.forEach(function(p){
+      var el=$('k-'+p.id);
+      if(el && el.value.trim()) k[p.id]=el.value.trim();
+    });
+    keys=k; saveJ(SK,keys); closeSheet(); checkAll();
+  };
+  $('clear').onclick=function(){
+    PROVIDERS.forEach(function(p){ var el=$('k-'+p.id); if(el) el.value=''; });
+  };
+
+  $('toggle-auto').onclick=function(){
+    cfg.auto=!cfg.auto; saveJ(CFGK,cfg); renderSettings(); setupAuto();
+  };
+  $('sel-interval').onchange=function(){
+    cfg.interval=parseInt(this.value,10); saveJ(CFGK,cfg); setupAuto();
+  };
+  $('inp-threshold').onchange=function(){
+    cfg.threshold=Number(this.value)||0; saveJ(CFGK,cfg);
+    if(cache) renderBalance(cache.results,cache.at,false);
+  };
+  $('sel-theme').onchange=function(){
+    cfg.theme=this.value; saveJ(CFGK,cfg); applyTheme();
+    if(cache) renderBalance(cache.results,cache.at,false);
+    renderTrend();
+  };
+
+  $('btn-addlog').onclick=openLogSheet;
+  $('log-cancel').onclick=function(){ $('logsheet').className='sheet'; };
+  $('logsheet').onclick=function(e){ if(e.target===$('logsheet')) $('logsheet').className='sheet'; };
+  $('log-save').onclick=function(){
+    var amt=Number($('log-amount').value);
+    if(!amt || amt<=0){ alert('请输入正确的金额'); return; }
+    ledger.push({
+      id: Date.now()+'-'+Math.random().toString(36).slice(2,7),
+      at: Date.now(),
+      provider: $('log-provider').value,
+      amount: amt,
+      type: $('log-type').value,
+      note: $('log-note').value.trim()
+    });
+    saveJ(LGK,ledger);
+    $('logsheet').className='sheet';
+    renderLog();
+  };
+
+  $('btn-trend-clear').onclick=function(){
+    if(!confirm('确定清空余额历史记录吗？')) return;
+    history=[]; saveJ(HK,history); renderTrend();
+  };
+
+  /* ---------------- 启动 ---------------- */
+  renderSettings();
+  setupAuto();
+  if(cache) renderBalance(cache.results, cache.at, false);
+
+  // 每次启动都重新读一次密钥，避免多标签页或写入顺序导致读到空
+  var freshKeys = loadJ(SK, null);
+  if(freshKeys && Object.keys(freshKeys).length) keys = freshKeys;
+
+  // 稍等一拍再刷新，确保 DOM 与存储都已就绪
+  $('status').textContent = '准备刷新…';
+  setTimeout(function(){ checkAll(); }, 60);
+
+  // 回到前台时，如果开了自动刷新就补一次
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='visible' && cfg.auto) checkAll();
+  });
+})();
+</script>
+</body>
+</html>
