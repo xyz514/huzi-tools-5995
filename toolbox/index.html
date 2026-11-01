@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#101728" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>护理工具箱</title>
+<style>
+  :root[data-theme="dark"]{
+    --bg:#101728; --card:#1b2438; --card2:#232e46; --line:rgba(255,255,255,.1);
+    --text:#e9eefb; --muted:#8b98b8; --acc:#4f8cff; --ok:#22c55e; --no:#ef4444; --warn:#f59e0b;
+  }
+  :root[data-theme="light"]{
+    --bg:#eef2f9; --card:#ffffff; --card2:#f3f6fc; --line:rgba(0,0,0,.08);
+    --text:#16213a; --muted:#6b7794; --acc:#2563eb; --ok:#059669; --no:#dc2626; --warn:#d97706;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{background:var(--bg);min-height:100vh;color:var(--text);font-size:16px;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:max(14px,env(safe-area-inset-top)) 14px calc(30px + env(safe-area-inset-bottom));}
+  header{display:flex;align-items:center;justify-content:space-between;margin:0 2px 14px;gap:10px}
+  h1{font-size:21px;margin:0}
+  .sub{color:var(--muted);font-size:12px;margin-top:4px}
+  button{font:inherit;border:0;border-radius:12px;padding:10px 14px;cursor:pointer;
+    background:var(--card2);color:var(--text);font-size:14px}
+  button:active{transform:scale(.97)}
+  button.p{background:linear-gradient(135deg,#4f8cff,#7c5cff);color:#fff;font-weight:600}
+  button.sm{padding:7px 11px;font-size:13px;border-radius:9px}
+  button.danger{background:rgba(239,68,68,.15);color:var(--no)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .tool{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 14px;
+    display:flex;flex-direction:column;gap:7px;cursor:pointer;text-align:left}
+  .tool .ic{font-size:26px}
+  .tool b{font-size:15px}
+  .tool small{font-size:11.5px;color:var(--muted);line-height:1.4}
+  .view{display:none}.view.on{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:11px}
+  .row2{display:flex;gap:9px}.row2>*{flex:1}
+  .field{margin-bottom:11px}
+  .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px}
+  input,select,textarea{width:100%;padding:11px 12px;border-radius:11px;border:1px solid var(--line);
+    background:var(--card2);color:var(--text);font-size:16px;outline:none;font-family:inherit}
+  input:focus,select:focus,textarea:focus{border-color:var(--acc)}
+  textarea{min-height:80px;resize:vertical}
+  .item{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:9px}
+  .item .t{font-size:14.5px;font-weight:600;margin-bottom:5px}
+  .item .m{font-size:12px;color:var(--muted);line-height:1.6}
+  .empty{text-align:center;color:var(--muted);font-size:14px;padding:36px 0;line-height:1.9}
+  .sect{font-size:14px;font-weight:600;margin:16px 2px 9px}
+  .tabs{display:flex;gap:7px;margin-bottom:11px;overflow:auto;padding-bottom:2px}
+  .tabs button{white-space:nowrap;padding:8px 13px;font-size:13px;border-radius:9px;background:var(--card2)}
+  .tabs button.on{background:var(--acc);color:#fff}
+  .statgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:12px 8px;text-align:center}
+  .stat b{display:block;font-size:20px;font-weight:700}
+  .stat span{font-size:11px;color:var(--muted)}
+  .big{font-size:40px;font-weight:800;letter-spacing:-1px;text-align:center;color:var(--acc)}
+  .hintline{font-size:12px;color:var(--muted);line-height:1.7;margin:9px 2px}
+  .chip{display:inline-block;font-size:11px;padding:3px 8px;border-radius:6px;background:rgba(79,140,255,.16);color:var(--acc);margin-right:5px}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+  .cal .h{font-size:11px;color:var(--muted);padding:4px 0}
+  .cal .d{aspect-ratio:1;border-radius:8px;background:var(--card2);display:flex;align-items:center;
+    justify-content:center;font-size:13px;flex-direction:column;line-height:1.1;cursor:pointer;position:relative}
+  .cal .d.today{outline:2px solid var(--acc)}
+  .cal .d .tag{font-size:9px;font-weight:700;padding:1px 3px;border-radius:3px;margin-top:1px}
+  .cal .d .tag.day{background:rgba(79,140,255,.3);color:#9fc0ff}
+  .cal .d .tag.night{background:rgba(168,85,247,.3);color:#d8b4fe}
+  .cal .d .tag.rest{background:rgba(139,152,184,.25);color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- 主页 -->
+<div class="view on" id="v-home">
+  <header>
+    <div><h1>护理工具箱</h1><div class="sub" id="home-sub"></div></div>
+    <button id="btn-theme" class="sm">🌙</button>
+  </header>
+  <div class="grid" id="toolgrid"></div>
+  <div class="hintline" style="margin-top:16px">所有数据只保存在这台手机上，不上传任何服务器。</div>
+</div>
+
+<!-- 1 实习日志 -->
+<div class="view" id="v-diary">
+  <header><h1>实习日志</h1><div style="display:flex;gap:7px"><button class="sm p" id="diary-add">+ 记一笔</button><button class="sm" data-back>返回</button></div></header>
+  <div class="statgrid" id="diary-stat"></div>
+  <div class="tabs" id="diary-tabs"></div>
+  <div id="diary-list"></div>
+</div>
+
+<!-- 2 护理操作速查 -->
+<div class="view" id="v-skills">
+  <header><h1>操作速查</h1><button class="sm" data-back>返回</button></header>
+  <input id="skill-search" placeholder="搜索操作名称，如：导尿、鼻饲" style="margin-bottom:11px" />
+  <div class="tabs" id="skill-cats"></div>
+  <div id="skill-list"></div>
+</div>
+
+<!-- 3 倒计时打卡 -->
+<div class="view" id="v-countdown">
+  <header><h1>护资倒计时</h1><button class="sm" data-back>返回</button></header>
+  <div class="card" style="text-align:center">
+    <div class="big" id="cd-days">--</div>
+    <div style="color:var(--muted);font-size:13px" id="cd-label">距离考试</div>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+      <input type="date" id="cd-date" style="max-width:170px" />
+      <button class="sm" id="cd-save">保存</button>
+    </div>
+  </div>
+  <div class="statgrid" id="cd-stat"></div>
+  <div class="sect">最近 28 天打卡</div>
+  <div class="card"><div class="cal" id="cd-heat"></div></div>
+  <div class="sect">今日任务</div>
+  <div id="cd-tasks"></div>
+</div>
+
+<!-- 4 排班 -->
+<div class="view" id="v-shift">
+  <header><h1>排班表</h1><div style="display:flex;gap:7px"><button class="sm" data-back>返回</button></div></header>
+  <div class="card">
+    <div class="row2" style="align-items:end">
+      <div class="field" style="margin:0"><label>月份</label><input type="month" id="shift-month" /></div>
+      <button class="sm p" id="shift-record" style="height:44px">记本日班次</button>
+    </div>
+  </div>
+  <div class="statgrid" id="shift-stat"></div>
+  <div class="card"><div class="cal" id="shift-cal"></div></div>
+  <div class="hintline">点某天可快速标记：白班 / 夜班 / 休息 / 清除</div>
+</div>
+
+<!-- 5 剂量计算 -->
+<div class="view" id="v-dose">
+  <header><h1>剂量计算</h1><button class="sm" data-back>返回</button></header>
+  <div class="tabs" id="dose-tabs">
+    <button class="on" data-t="weight">按体重给药</button>
+    <button data-t="rate">输液滴速</button>
+    <button data-t="drop">滴系数换算</button>
+  </div>
+  <div class="card" id="dose-panel"></div>
+  <div class="hintline">结果仅供参考，实际用药请以医嘱和药品说明书为准。</div>
+</div>
+
+<!-- 6 生命体征 -->
+<div class="view" id="v-vitals">
+  <header><h1>生命体征</h1><div style="display:flex;gap:7px"><button class="sm p" id="vital-add">+ 记录</button><button class="sm" data-back>返回</button></div></header>
+  <div id="vital-list"></div>
+</div>
+
+<!-- 7 记账 -->
+<div class="view" id="v-money">
+  <header><h1>记账本</h1><div style="display:flex;gap:7px"><button class="sm p" id="money-add">+ 记一笔</button><button class="sm" data-back>返回</button></div></header>
+  <div class="statgrid" id="money-stat"></div>
+  <div class="tabs" id="money-tabs"></div>
+  <div id="money-list"></div>
+</div>
+
+<!-- 8 番茄钟 -->
+<div class="view" id="v-pomo">
+  <header><h1>专注计时</h1><button class="sm" data-back>返回</button></header>
+  <div class="card" style="text-align:center;padding:28px 14px">
+    <div class="big" id="pomo-time" style="font-size:58px">25:00</div>
+    <div style="color:var(--muted);font-size:13px;margin:8px 0 18px" id="pomo-label">准备开始</div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="p" id="pomo-start" style="padding:12px 26px">开始</button>
+      <button id="pomo-reset" style="padding:12px 22px">重置</button>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:16px">
+      <button class="sm" data-min="25">25分</button>
+      <button class="sm" data-min="45">45分</button>
+      <button class="sm" data-min="5">5分休息</button>
+    </div>
+  </div>
+  <div class="statgrid" id="pomo-stat"></div>
+</div>
+
+<!-- 9 待办 -->
+<div class="view" id="v-todo">
+  <header><h1>待办清单</h1><div style="display:flex;gap:7px"><button class="sm p" id="todo-add">+ 添加</button><button class="sm" data-back>返回</button></div></header>
+  <div class="card" style="padding:11px"><input id="todo-input" placeholder="输入待办，回车添加" /></div>
+  <div id="todo-list"></div>
+</div>
+
+<!-- 通用弹层 -->
+<div class="sheet" id="sheet" style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:50">
+  <div style="width:100%;background:var(--bg);border-radius:22px 22px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto">
+    <h2 id="sheet-title" style="font-size:16px;margin:0 0 14px">填写</h2>
+    <div id="sheet-body"></div>
+    <div style="display:flex;gap:9px;margin-top:16px">
+      <button id="sheet-cancel" style="flex:1">取消</button>
+      <button id="sheet-ok" class="p" style="flex:2">保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="./tools.js"></script>
+</body>
+</html>
